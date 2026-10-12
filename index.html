@@ -87,6 +87,8 @@ textarea:focus,input:focus,select:focus,button:focus-visible{outline:3px solid r
 .panel{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px}
 .panel .row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .preview{white-space:pre-wrap;background:#1f1913;border-radius:10px;padding:10px;font-size:14px;margin:8px 0;word-break:break-word}
+.btn-wa{background:#25d366;color:#0b2416}
+.panel.ask{border-color:#25d366}
 .add{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
 @media(min-width:700px){.add{grid-template-columns:2fr 1.4fr auto}}
 </style>
@@ -338,7 +340,7 @@ $('g-save').onclick = async ()=>{
 /* =========================================================
    VISTA ORGANIZZATORI
    ========================================================= */
-let A = {token:null, me:null, event:null, guests:[], filter:'all', q:'', open:null, links:{}};
+let A = {token:null, me:null, event:null, guests:[], filter:'all', q:'', open:null, ask:null, links:{}};
 
 async function initAdmin(token){
   A.token=token;
@@ -382,13 +384,24 @@ function renderAdmin(){
       ${g.updatedAt?`<div class="g-meta">Aggiornato ${esc(fmtStamp(g.updatedAt))}${g.updatedBy?` da ${esc(g.updatedBy)}`:''}</div>`:''}
       ${g.notes?`<div class="g-note">“${esc(g.notes)}”</div>`:''}
       ${isAdmin?`<div class="g-actions">
-        <button type="button" class="btn btn-ghost btn-sm" data-act="invite">Invito</button>
+        ${g.active?`<button type="button" class="btn btn-sm btn-wa" data-act="wa">${g.sent?'Invita di nuovo':'Invita su WhatsApp'}</button>`:''}
+        <button type="button" class="btn btn-ghost btn-sm" data-act="invite">Copia link…</button>
         <button type="button" class="btn btn-ghost btn-sm" data-act="edit">Modifica</button>
         <button type="button" class="btn btn-ghost btn-sm" data-act="toggle">${g.active?'Disattiva':'Riattiva'}</button>
       </div>`:''}
+      ${A.ask===g.id ? `<div class="panel ask">
+        <p style="margin:0 0 8px">Hai inviato il messaggio a <b>${esc(g.name)}</b> su WhatsApp?</p>
+        <div class="g-actions"><button type="button" class="btn btn-sm btn-wa" data-act="askyes">Sì, inviato</button><button type="button" class="btn btn-ghost btn-sm" data-act="askno">Non ancora</button></div>
+      </div>` : ''}
       ${A.open && A.open.id===g.id ? panelHtml(g) : ''}
     </li>`).join('') : '<li class="g"><span class="hint">Nessuno in questo elenco.</span></li>';
 }
+/* numero per wa.me: solo cifre con prefisso internazionale (079… → 4179…) */
+function waNumber(p){
+  let d=String(p||'').trim(); const plus=d.startsWith('+'); d=d.replace(/\D/g,'');
+  if (plus) return d; if (d.startsWith('00')) return d.slice(2); if (d.startsWith('0')) return '41'+d.slice(1); return d;
+}
+function waUrl(g, text){ return `https://wa.me/${waNumber(g.phone)}?text=${encodeURIComponent(text)}`; }
 function inviteText(g, link){ return A.event.message.replace('{nome}', g.name.split(' ')[0]).replace('{link}', link); }
 function panelHtml(g){
   if (A.open.kind==='invite'){
@@ -397,7 +410,7 @@ function panelHtml(g){
         <p class="hint">${g.hasLink?'Questo invitato ha già un link. Generarne uno nuovo <b>disattiva il precedente</b>.':'Genera il link personale e il messaggio da mandare.'}</p>
         <button type="button" class="btn btn-ghost btn-sm" data-act="gen">${g.hasLink?'Genera nuovo link':'Genera link'}</button></div>`;
     const text = inviteText(g, link);
-    const wa = `https://wa.me/${(g.phone||'').replace(/[^\d]/g,'')}?text=${encodeURIComponent(text)}`;
+    const wa = waUrl(g, text);
     return `<div class="panel">
       <div class="preview">${esc(text)}</div>
       <div class="g-actions">
@@ -406,7 +419,7 @@ function panelHtml(g){
         ${navigator.share?'<button type="button" class="btn btn-ghost btn-sm" data-act="share">Condividi…</button>':''}
         <button type="button" class="btn btn-ghost btn-sm" data-act="sent">${g.sent?'Segna come non inviato':'Segna come inviato'}</button>
       </div>
-      <p class="hint">WhatsApp si apre con il testo pronto: l'invio lo fai tu.</p></div>`;
+      <p class="hint">WhatsApp si apre con il testo pronto${g.phone?'':' (senza numero: scegli tu il contatto)'}: l'invio lo fai tu.</p></div>`;
   }
   return `<div class="panel">
     <div class="row">
@@ -432,6 +445,23 @@ $('a-list').addEventListener('click', async e=>{
   try{
     if (act==='invite'||act==='edit'){ A.open = (A.open&&A.open.id===g.id&&A.open.kind===act)?null:{id:g.id,kind:act}; }
     else if (act==='close'){ A.open=null; }
+    else if (act==='wa'){
+      let link = A.links[g.id];
+      if (!link && g.hasLink && !confirm(`${g.name} ha già un link: ne creo uno nuovo e il precedente smetterà di funzionare. Continuare?`)) return;
+      const w = window.open('', '_blank');          // aperta subito dentro il clic, così il browser non la blocca
+      try{
+        if (!link){
+          b.disabled=true; b.textContent='Preparo…';
+          const t=newToken(); await api('adminSetToken',{adminToken:A.token,guestId:g.id,newToken:t});
+          link = A.links[g.id] = `${SITE_URL}?i=${t}`; g.hasLink=true;
+        }
+        const url = waUrl(g, inviteText(g, link));
+        if (w){ w.opener=null; w.location.href=url; } else A.open={id:g.id,kind:'invite'};
+      }catch(err){ if (w) w.close(); throw err; }
+      A.ask=g.id;
+    }
+    else if (act==='askyes'){ A.ask=null; await api('adminUpsertGuest',{adminToken:A.token,guestId:g.id,sent:'true'}); await loadAdmin(); return; }
+    else if (act==='askno'){ A.ask=null; }
     else if (act==='gen'){
       if (g.hasLink && !confirm(`Il link precedente di ${g.name} smetterà di funzionare. Continuare?`)) return;
       const t=newToken(); await api('adminSetToken',{adminToken:A.token,guestId:g.id,newToken:t});
