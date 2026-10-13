@@ -56,6 +56,34 @@ textarea:focus,input:focus,select:focus,button:focus-visible{outline:3px solid r
 .info b{color:var(--text)}
 .center{text-align:center}
 .foot{color:var(--muted);font-size:13px;text-align:center;margin-top:22px}
+.btn-block{width:100%;margin-top:10px}
+
+/* ---- conferma invitato ---- */
+.done{text-align:center;margin-top:0;margin-bottom:18px;border-color:var(--yes);
+  box-shadow:0 0 0 3px rgba(143,196,106,.15),0 20px 50px rgba(0,0,0,.45)}
+.done:focus{outline:none}
+.done.st-maybe{border-color:var(--maybe);box-shadow:0 0 0 3px rgba(242,183,5,.15),0 20px 50px rgba(0,0,0,.45)}
+.done.st-no{border-color:var(--line);box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.tick{width:68px;height:68px;border-radius:50%;background:var(--yes);color:#1c1611;font-size:38px;font-weight:900;
+  line-height:68px;margin:0 auto 10px}
+.st-maybe .tick{background:var(--maybe)}.st-no .tick{background:var(--no)}
+.ok-badge{display:inline-block;color:var(--yes);font-weight:800;font-size:14px;letter-spacing:.06em;text-transform:uppercase}
+.st-maybe .ok-badge{color:var(--maybe)}.st-no .ok-badge{color:var(--no)}
+.done h2{color:var(--gold);font-size:32px;margin-top:6px}
+.done .lead{margin-top:8px}
+.facts{list-style:none;margin:20px 0 0;padding:18px 0 0;border-top:1px solid var(--line);display:grid;gap:14px;text-align:left}
+.facts li{display:grid;grid-template-columns:30px 1fr;gap:8px;align-items:start}
+.facts .ic{font-size:20px;line-height:1.35;text-align:center}
+.facts b{display:block}
+.facts .tx{color:var(--muted);font-size:15px}
+.facts a{color:var(--gold)}
+.done-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:20px}
+.done .hint{margin-top:12px}
+.done.pop .tick{animation:pop .55s cubic-bezier(.2,.9,.3,1.3)}
+.done.pop{animation:glow 1.2s ease-out}
+@keyframes pop{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes glow{0%{transform:translateY(8px);opacity:.3}100%{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.done.pop,.done.pop .tick{animation:none}}
 .mockbar{background:#3d3020;color:var(--gold2);font-size:13px;text-align:center;padding:6px 10px;border-radius:10px;margin-bottom:12px}
 
 /* ---- admin ---- */
@@ -89,6 +117,19 @@ textarea:focus,input:focus,select:focus,button:focus-visible{outline:3px solid r
 .preview{white-space:pre-wrap;background:#1f1913;border-radius:10px;padding:10px;font-size:14px;margin:8px 0;word-break:break-word}
 .btn-wa{background:#25d366;color:#0b2416}
 .panel.ask{border-color:#25d366}
+.settings summary{cursor:pointer;list-style:none;font-size:17px}
+.settings summary::-webkit-details-marker{display:none}
+.settings summary::before{content:'▸ ';color:var(--gold)}
+.settings[open] summary::before{content:'▾ '}
+.set-grid{display:grid;gap:14px;margin-top:16px}
+@media(min-width:700px){.set-grid{grid-template-columns:1fr 1fr}.set-grid .span2{grid-column:span 2}}
+.set-grid label{display:grid;gap:6px;font-weight:700;font-size:15px}
+.set-grid input,.set-grid textarea{font-weight:400}
+.set-grid label .hint{font-weight:500;display:inline;margin:0}
+.set-grid label.check{display:flex;align-items:center;gap:10px;font-weight:600}
+.set-grid label.check input{width:22px;height:22px;flex:none}
+.preview-box{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:0 14px 14px}
+.preview-box .facts{border-top:0;margin-top:0;padding-top:14px}
 .add{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
 @media(min-width:700px){.add{grid-template-columns:2fr 1.4fr auto}}
 </style>
@@ -101,8 +142,22 @@ textarea:focus,input:focus,select:focus,button:focus-visible{outline:3px solid r
 
   <!-- ===== Invitato ===== -->
   <section id="view-guest" hidden>
-    <img class="poster" src="invito.jpg" alt="Invito: Daniele 60 anni. Festeggiamo venerdì 30 ottobre 2026, strada collinetta 42, Ascona, dalle 18.00">
-    <div class="card">
+    <!-- conferma: in cima alla pagina, così dopo il salvataggio è la prima cosa che si vede -->
+    <div class="card done" id="g-done" tabindex="-1" hidden>
+      <div class="tick" aria-hidden="true">✓</div>
+      <span class="ok-badge">Risposta registrata</span>
+      <h2 id="d-title"></h2>
+      <p class="lead" id="d-sum"></p>
+      <ul class="facts" id="d-facts" hidden></ul>
+      <div class="done-actions">
+        <button type="button" class="btn btn-ghost" id="d-cal" hidden>🗓️ Aggiungi al calendario</button>
+        <button type="button" class="btn btn-ghost" id="d-edit">Cambia risposta</button>
+      </div>
+      <p class="hint" id="d-hint"></p>
+    </div>
+
+    <img class="poster" src="invito.jpg" alt="Invito: Daniele 60 anni. Festeggiamo venerdì 30 ottobre 2026, Ascona, dalle 18.00">
+    <div class="card" id="g-card">
       <h1 class="hello" id="g-hello">Ciao!</h1>
       <p class="lead" id="g-lead"></p>
       <p class="state" id="g-state" hidden></p>
@@ -129,13 +184,9 @@ textarea:focus,input:focus,select:focus,button:focus-visible{outline:3px solid r
         <textarea id="g-notes" maxlength="300" placeholder="Allergie, orario d'arrivo, un saluto…"></textarea>
 
         <button type="button" class="btn btn-primary" id="g-save" disabled>Salva risposta</button>
+        <button type="button" class="btn btn-ghost btn-block" id="g-cancel" hidden>Lascia la risposta com'è</button>
         <p class="msg" id="g-msg" role="status" aria-live="polite"></p>
       </div>
-    </div>
-
-    <div class="card" id="g-infocard" hidden>
-      <h2 class="hello" style="font-size:22px;margin-bottom:10px">Ti aspetto!</h2>
-      <ul class="info" id="g-info"></ul>
     </div>
     <p class="foot">Le tue risposte le vedono solo gli organizzatori della festa.</p>
   </section>
@@ -148,6 +199,27 @@ textarea:focus,input:focus,select:focus,button:focus-visible{outline:3px solid r
     </div>
 
     <div class="tiles" id="a-tiles"></div>
+
+    <details class="card settings" id="a-settings">
+      <summary><b>⚙️ Impostazioni festa</b> <span class="hint">· data, indirizzo, info per gli invitati, messaggio WhatsApp</span></summary>
+      <div class="set-grid">
+        <label>Titolo<input id="c-titolo" maxlength="200"></label>
+        <label>Orario (come appare all'invitato)<input id="c-orario" maxlength="200" placeholder="dalle 18.00"></label>
+        <label>Inizio festa<input id="c-data" type="datetime-local"></label>
+        <label>Risposte aperte fino a<input id="c-scadenza" type="datetime-local"></label>
+        <label class="span2">Indirizzo <span class="hint">(lo vede solo chi risponde Sì o Forse)</span><input id="c-indirizzo" maxlength="200"></label>
+        <label class="span2">Info per gli invitati <span class="hint">· una voce per riga, nel formato «Titolo: testo»</span>
+          <textarea id="c-info" maxlength="1500" rows="6"></textarea></label>
+        <label>Massimo persone per invito <span class="hint">(se non indicato sull'invitato)</span><input id="c-max_persone" type="number" min="1" max="10"></label>
+        <label class="check"><input id="c-telegram" type="checkbox"> Avviso su Telegram a ogni risposta</label>
+        <label class="span2">Messaggio WhatsApp <span class="hint">· {nome} e {link} vengono sostituiti</span>
+          <textarea id="c-messaggio" maxlength="1500" rows="4"></textarea></label>
+      </div>
+      <span class="label">Anteprima: cosa vede chi risponde Sì</span>
+      <div class="preview-box"><ul class="facts" id="c-preview"></ul></div>
+      <button type="button" class="btn btn-primary" id="c-save">Salva impostazioni</button>
+      <p class="msg" id="c-msg" role="status" aria-live="polite"></p>
+    </details>
 
     <div class="toolbar" id="a-filters" role="group" aria-label="Filtra"></div>
     <div class="toolbar">
@@ -195,7 +267,7 @@ const SITE_URL = location.origin + location.pathname;
 /* ---------- utilità ---------- */
 const $ = id => document.getElementById(id);
 const STATUS_LABEL = {yes:'Sì', maybe:'Forse', no:'No', unanswered:'Mancante'};
-const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('it-CH',{weekday:'long',day:'numeric',month:'long'}) : '';
+const fmtDate = iso => { const d=new Date(iso); return !iso ? '' : isNaN(d) ? String(iso) : d.toLocaleDateString('it-CH',{weekday:'long',day:'numeric',month:'long'}); };
 const fmtStamp = iso => iso ? new Date(iso).toLocaleString('it-CH',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function newToken(){ const b=new Uint8Array(24); crypto.getRandomValues(b); return btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
@@ -226,7 +298,10 @@ const MOCK = (() => {
   const now = new Date().toISOString();
   return {
     event:{ title:'Daniele 60', date:'2026-10-30T18:00:00+01:00', time:'dalle 18.00',
-      address:'Strada Collinetta 42, Ascona', info:'', deadline:'2026-10-28T23:59:00+01:00', maxParty:2,
+      address:'Via di Prova 1, Ascona (indirizzo finto)',
+      info:'Dress code: relax!\nParcheggi: (testo di prova: quello vero arriva dal server solo a chi ha un link valido)\n'+
+        'Regali: non sprecare soldi in regali! Piuttosto investili in un taxi per l\'andata, ma soprattutto per il rientro 😉',
+      deadline:'2026-10-28T23:59:00+01:00', maxParty:2,
       message:'Ciao {nome}! Venerdì 30 ottobre festeggio i miei 60 anni a casa, dalle 18.00. Mi farebbe tanto piacere averti con me 🎉\nConfermami qui, ci vuole un attimo:\n{link}' },
     admins:{ 'demo-admin':{name:'Daniele', role:'admin'}, 'demo-viewer':{name:'Consultazione', role:'viewer'} },
     guests:[
@@ -249,13 +324,17 @@ async function mockApi(action, d){
   if (action==='saveOwnRSVP'){ const g=MOCK.guests.find(x=>x.token===d.token&&x.active); if(!g) err('invalid'); if(!open) err('closed');
     g.status=d.status; g.party=d.status==='yes'?Math.min(Math.max(+d.party||1,1),g.maxParty||MOCK.event.maxParty):0; g.notes=(d.notes||'').slice(0,300);
     g.updatedAt=new Date().toISOString(); g.updatedBy='invitato'; return {ok:true,guest:pub(g),event:evFor(g)}; }
-  if (action==='adminDashboard'){ const a=adm(); return {ok:true,me:a,event:MOCK.event,guests:MOCK.guests.map(({token,...g})=>({...g,hasLink:!!token}))}; }
+  if (action==='adminDashboard'){ const a=adm(), e=MOCK.event;
+    return {ok:true,me:a,event:e,guests:MOCK.guests.map(({token,...g})=>({...g,hasLink:!!token})),
+      config:{titolo:e.title,data:e.date,orario:e.time,indirizzo:e.address,info:e.info,scadenza:e.deadline,max_persone:String(e.maxParty),messaggio:e.message,telegram:'si'}}; }
   const a = adm(); if (a.role!=='admin') err('forbidden');
   if (action==='adminUpsertGuest'){ let g=MOCK.guests.find(x=>x.id===d.guestId);
     if(!g){ g={id:'g'+Date.now(),token:'',name:'',phone:'',status:'unanswered',party:1,notes:'',sent:false,updatedAt:'',updatedBy:'',active:true}; MOCK.guests.push(g); }
     for (const k of ['name','phone','status','notes']) if (d[k]!==undefined) g[k]=String(d[k]).slice(0,k==='notes'?300:60);
     if (d.party!==undefined) g.party=+d.party; if (d.maxParty!==undefined) g.maxParty=Math.min(Math.max(+d.maxParty||1,1),10); if (d.active!==undefined) g.active=d.active==='true'; if (d.sent!==undefined) g.sent=d.sent==='true';
     if (d.status!==undefined){ g.updatedAt=new Date().toISOString(); g.updatedBy=a.name; } return {ok:true,guestId:g.id}; }
+  if (action==='adminSaveConfig'){ const c=d.config, e=MOCK.event;
+    Object.assign(e,{title:c.titolo,date:c.data,time:c.orario,address:c.indirizzo,info:c.info,deadline:c.scadenza,maxParty:+c.max_persone||2,message:c.messaggio}); return {ok:true}; }
   if (action==='adminSetToken'){ const g=MOCK.guests.find(x=>x.id===d.guestId)||err('notfound'); g.token=d.newToken; return {ok:true}; }
   err('unknown');
 }
@@ -263,7 +342,7 @@ async function mockApi(action, d){
 /* =========================================================
    VISTA INVITATO
    ========================================================= */
-let G = {token:null, status:null, party:1, max:2, editable:true};
+let G = {token:null, status:null, party:1, max:2, editable:true, guest:null, event:null};
 
 async function initGuest(token){
   G.token = token;
@@ -275,28 +354,74 @@ async function initGuest(token){
 }
 function renderGuest(r){
   const g=r.guest, ev=r.event;
-  G.max = ev.maxParty; G.editable = r.editable;
+  G.max = ev.maxParty; G.editable = r.editable; G.guest = g; G.event = ev;
   $('g-hello').textContent = `Ciao ${g.name}!`;
   $('g-lead').textContent = r.editable
     ? `Fammi sapere se ci sarai. Puoi cambiare idea fino a ${fmtDate(ev.deadline)}.`
     : 'Le risposte sono chiuse. Per cambiamenti scrivi direttamente a Daniele.';
+  fillForm(g);
+  for (const el of document.querySelectorAll('#g-form button, #g-form textarea')) el.disabled = !r.editable;
+  if (r.editable) updateSave();
+  if (g.status==='unanswered') showForm(); else showDone(false);
+}
+function fillForm(g){
   setStatus(g.status==='unanswered'?null:g.status);
   G.party = Math.max(1, g.party||1); renderParty();
   $('g-notes').value = g.notes||'';
   renderGuestState(g);
-  renderInfo(ev);
-  for (const el of document.querySelectorAll('#g-form button, #g-form textarea')) el.disabled = !r.editable;
-  if (r.editable) updateSave();
+  $('g-cancel').hidden = g.status==='unanswered';
+  $('g-msg').textContent='';
 }
-/* il server manda l'indirizzo solo a chi ha risposto Sì o Forse */
-function renderInfo(ev){
-  if (!ev.address){ $('g-infocard').hidden=true; return; }
+function showForm(){ $('g-done').hidden=true; $('g-card').hidden=false; }
+
+/* scheda di conferma: risposta + (per Sì/Forse) tutte le info della festa */
+function showDone(fresh){
+  const g=G.guest, ev=G.event, box=$('g-done');
+  box.className = `card done st-${g.status}`;
+  $('d-title').textContent = {yes: g.party>1?'Vi aspetto! 🎉':'Ti aspetto! 🎉', maybe:'Spero proprio di vederti!', no:'Peccato, mi mancherai!'}[g.status];
+  $('d-sum').innerHTML = {
+    yes: `Hai risposto <b>Sì</b>${g.party>1?` · sarete in <b>${g.party}</b>`:''}.`,
+    maybe: 'Hai risposto <b>Forse</b>. Quando lo sai, riapri questo link e conferma.',
+    no: 'Hai risposto <b>No</b>. Grazie di avermelo detto!'}[g.status] +
+    (g.notes?`<br><span class="hint">La tua nota: “${esc(g.notes)}”</span>`:'');
+  renderFacts(ev);
+  $('d-cal').hidden = !ev.address || isNaN(new Date(ev.date));
+  $('d-edit').hidden = !G.editable;
+  $('d-hint').textContent = G.editable
+    ? `Puoi cambiare risposta fino a ${fmtDate(ev.deadline)}.`
+    : 'Le risposte sono chiuse. Per cambiamenti scrivi direttamente a Daniele.';
+  $('g-card').hidden=true; box.hidden=false;
+  if (fresh){
+    box.classList.add('pop');
+    window.scrollTo({top:0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+    box.focus({preventScroll:true});
+  }
+}
+/* il server manda indirizzo e info solo a chi ha risposto Sì o Forse.
+   info = una riga per voce, "Titolo: testo" (es. "Parcheggi: …") */
+const INFO_ICON = [[/dress|abbigl|vestit/i,'👕'],[/parche|posteg|auto/i,'🅿️'],[/regal/i,'🎁'],[/taxi|rientro|trasport/i,'🚕'],[/contatt|telefon/i,'📞']];
+function renderFacts(ev, ul=$('d-facts')){
+  if (!ev.address){ ul.hidden=true; ul.innerHTML=''; return; }
+  const li = (ic,t,html) => `<li><span class="ic" aria-hidden="true">${ic}</span><div>${t?`<b>${esc(t)}</b>`:''}<span class="tx">${html}</span></div></li>`;
   const maps = 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(ev.address);
-  $('g-info').innerHTML =
-    `<li><b>Quando</b> · ${esc(fmtDate(ev.date))}, ${esc(ev.time)}</li>`+
-    `<li><b>Dove</b> · ${esc(ev.address)} · <a href="${esc(maps)}" target="_blank" rel="noopener noreferrer" style="color:var(--gold)">apri la mappa</a></li>`+
-    (ev.info?`<li>${esc(ev.info)}</li>`:'');
-  $('g-infocard').hidden=false;
+  const lines = String(ev.info||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean).map(s=>{
+    const i=s.indexOf(':'); const [t,d] = i>0&&i<40 ? [s.slice(0,i).trim(), s.slice(i+1).trim()] : ['', s];
+    return li((INFO_ICON.find(([re])=>re.test(t||d))||[,'✨'])[1], t, esc(d));
+  });
+  ul.innerHTML =
+    li('🗓️','Quando',esc([fmtDate(ev.date),ev.time].filter(Boolean).join(', ')))+
+    li('📍','Dove',`${esc(ev.address)}<br><a href="${esc(maps)}" target="_blank" rel="noopener noreferrer">Apri la mappa</a>`)+
+    lines.join('');
+  ul.hidden=false;
+}
+function icsFile(ev){
+  const s=new Date(ev.date), e=new Date(s.getTime()+6*3600e3);
+  const f = d => d.toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
+  const t = x => String(x||'').replace(/[\\;,]/g,m=>'\\'+m).replace(/\r?\n/g,'\\n');
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Daniele60//RSVP//IT','BEGIN:VEVENT',
+    'UID:daniele60-20261030@rsvp','DTSTAMP:'+f(new Date()),'DTSTART:'+f(s),'DTEND:'+f(e),
+    'SUMMARY:'+t(`Festa ${ev.title||'Daniele 60'} 🎂`),'LOCATION:'+t(ev.address),'DESCRIPTION:'+t(ev.info),
+    'END:VEVENT','END:VCALENDAR'].join('\r\n');
 }
 function renderGuestState(g){
   const st=$('g-state');
@@ -322,15 +447,20 @@ function updateSave(){ $('g-save').disabled = !G.editable || !G.status; }
 document.querySelectorAll('.choice').forEach(b=>b.addEventListener('click',()=>{ setStatus(b.dataset.status); $('g-msg').textContent=''; }));
 $('p-minus').onclick=()=>{ if(G.party>1){G.party--;renderParty();} };
 $('p-plus').onclick=()=>{ if(G.party<G.max){G.party++;renderParty();} };
+$('d-edit').onclick=()=>{ fillForm(G.guest); showForm(); $('g-card').scrollIntoView({behavior:'smooth',block:'start'}); };
+$('g-cancel').onclick=()=>showDone(false);
+$('d-cal').onclick=()=>{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([icsFile(G.event)],{type:'text/calendar'})); a.download='daniele60.ics'; a.click();
+};
 $('g-save').onclick = async ()=>{
   const btn=$('g-save'), msg=$('g-msg');
   btn.disabled=true; btn.textContent='Salvo…'; msg.className='msg'; msg.textContent='';
   try{
     const r = await api('saveOwnRSVP',{token:G.token,status:G.status,party:G.status==='yes'?G.party:0,notes:$('g-notes').value.trim()});
-    renderGuestState(r.guest);
-    renderInfo(r.event);
-    msg.className='msg ok';
-    msg.textContent = {yes:'Grazie, ti aspetto! 🎉',maybe:'Grazie! Quando lo sai, riapri questo link.',no:'Peccato! Grazie di avermelo detto.'}[G.status];
+    G.guest=r.guest; G.event=r.event;
+    fillForm(r.guest);
+    showDone(true);
   }catch(e){
     msg.className='msg err';
     msg.textContent = e.code==='closed' ? 'Le risposte sono chiuse.' : 'Non sono riuscito a salvare. Controlla la connessione e riprova.';
@@ -352,8 +482,56 @@ async function loadAdmin(){
   A.me=r.me; A.event=r.event; A.guests=r.guests;
   $('a-who').textContent = `${r.me.name} · ${r.me.role==='admin'?'amministratore':'sola lettura'}`;
   $('a-addbox').hidden = r.me.role!=='admin';
+  if (!A.cfgDirty) fillSettings(r.config||{});
   renderAdmin();
 }
+
+/* ---------- impostazioni festa (foglio Config) ---------- */
+const CFG_FIELDS = ['titolo','data','orario','indirizzo','info','scadenza','max_persone','messaggio','telegram'];
+const pad2 = n => String(Math.floor(Math.abs(n))).padStart(2,'0');
+const toLocalInput = iso => { const d=new Date(iso); return isNaN(d) ? '' :
+  `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+const fromLocalInput = v => { const d=new Date(v); if (!v || isNaN(d)) return ''; const o=-d.getTimezoneOffset();
+  return `${v}:00${o<0?'-':'+'}${pad2(o/60)}:${pad2(o%60)}`; };
+function fillSettings(c){
+  const ro = A.me.role!=='admin';
+  for (const k of CFG_FIELDS){
+    const el=$('c-'+k);
+    if (k==='telegram') el.checked = c.telegram==='si';
+    else if (k==='data'||k==='scadenza') el.value = toLocalInput(c[k]);
+    else el.value = c[k] ?? '';
+    el.disabled = ro;
+  }
+  $('c-save').hidden = ro;
+  A.cfgDirty = false;
+  previewSettings();
+}
+function readSettings(){
+  const c={};
+  for (const k of CFG_FIELDS){
+    const el=$('c-'+k);
+    c[k] = k==='telegram' ? (el.checked?'si':'no') : (k==='data'||k==='scadenza') ? fromLocalInput(el.value) : el.value.trim();
+  }
+  return c;
+}
+function previewSettings(){
+  const c=readSettings();
+  renderFacts({date:c.data, time:c.orario, address:c.indirizzo||'(indirizzo mancante)', info:c.info}, $('c-preview'));
+}
+$('a-settings').addEventListener('input', ()=>{ A.cfgDirty=true; $('c-msg').textContent=''; previewSettings(); });
+$('c-save').onclick = async ()=>{
+  const btn=$('c-save'), msg=$('c-msg'), c=readSettings();
+  if (!c.data || !c.scadenza){ msg.className='msg err'; msg.textContent='Inserisci la data della festa e la scadenza delle risposte.'; return; }
+  btn.disabled=true; btn.textContent='Salvo…'; msg.textContent='';
+  try{
+    await api('adminSaveConfig',{adminToken:A.token, config:c});
+    A.cfgDirty=false; await loadAdmin();
+    msg.className='msg ok'; msg.textContent='Salvato ✓ Gli invitati vedono subito le nuove informazioni.';
+  }catch(e){
+    msg.className='msg err';
+    msg.textContent = e.code==='bad_input' ? 'Controlla le date.' : e.code==='forbidden' ? 'Non hai i permessi per modificare.' : 'Salvataggio non riuscito. Riprova.';
+  }finally{ btn.disabled=false; btn.textContent='Salva impostazioni'; }
+};
 function renderAdmin(){
   const act = A.guests.filter(g=>g.active);
   const c = s => act.filter(g=>g.status===s).length;

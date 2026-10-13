@@ -38,11 +38,14 @@ const orgs = rowsO.map(r => ({ id: r[0], name: r[1], hash: r[2], role: r[3], act
 const out = { resp: '', write: false, body: '', notify: false, text: '' };
 const reply = o => { out.resp = JSON.stringify(o); return out; };
 const fail = c => reply({ ok: false, error: c });
+const writes = [];
+const flush = () => { out.write = true; out.body = JSON.stringify({ valueInputOption: 'RAW', data: writes }); };
 const write = g => {
-  out.write = true;
-  out.body = JSON.stringify({ valueInputOption: 'RAW',
-    data: [{ range: `Invitati!A${g._row}:M${g._row}`, values: [COLS.map(c => String(g[c] ?? ''))] }] });
+  writes.push({ range: `Invitati!A${g._row}:M${g._row}`, values: [COLS.map(c => String(g[c] ?? ''))] });
+  flush();
 };
+// chiavi del foglio Config modificabili dalla pagina organizzatori
+const CFG_KEYS = ['titolo', 'data', 'orario', 'indirizzo', 'info', 'scadenza', 'max_persone', 'messaggio', 'telegram'];
 const STATUS = ['yes', 'maybe', 'no'];
 const LABEL = { yes: 'Sì', maybe: 'Forse', no: 'No', unanswered: 'Mancante' };
 const maxOf = g => int(g.max_persone, 0) || maxDef;
@@ -85,6 +88,7 @@ if (!me) return fail('unauthorized');
 if (A === 'adminDashboard') {
   return reply({ ok: true, me: { name: me.name, role: me.role },
     event: { ...evFor({ stato: 'yes' }), maxParty: maxDef, message: cfg.messaggio },
+    config: Object.fromEntries(CFG_KEYS.map(k => [k, cfg[k] ?? ''])),
     guests: guests.filter(g => g.id).map(g => ({
       id: g.id, name: g.nome, phone: g.telefono, status: g.stato || 'unanswered', party: int(g.persone, 0),
       maxParty: int(g.max_persone, 0), notes: g.note, sent: g.invitato === 'si', sentAt: g.inviato_il,
@@ -118,6 +122,23 @@ if (A === 'adminUpsertGuest') {
   }
   write(g);
   return reply({ ok: true, guestId: g.id });
+}
+
+if (A === 'adminSaveConfig') {
+  const C = (P.config && typeof P.config === 'object') ? P.config : {};
+  let next = rowsC.length + 2;
+  for (const k of CFG_KEYS) {
+    if (C[k] === undefined) continue;
+    let v = clean(C[k], k === 'info' || k === 'messaggio' ? 1500 : 200);
+    if ((k === 'data' || k === 'scadenza') && isNaN(Date.parse(v))) return fail('bad_input');
+    if (k === 'max_persone') v = String(Math.min(Math.max(int(v, maxDef), 1), 10));
+    if (k === 'telegram') v = v === 'si' ? 'si' : 'no';
+    const i = rowsC.findIndex(r => r[0] === k);
+    const row = i >= 0 ? i + 2 : next++;
+    writes.push({ range: `Config!A${row}:B${row}`, values: [[k, v]] });
+  }
+  if (writes.length) flush();
+  return reply({ ok: true });
 }
 
 if (A === 'adminSetToken') {

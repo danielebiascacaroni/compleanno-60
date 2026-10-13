@@ -26,10 +26,18 @@ senza scrivere il nome. Gli organizzatori usano il proprio link (`?a=…`) per l
 - Il webhook Make non ha limitazione di frequenza: un abuso potrebbe consumare operazioni
   del piano, ma senza un token valido non legge né modifica nulla.
 
-## Modifiche frequenti (dal foglio `Config`, senza toccare il codice)
+## Modifiche frequenti (senza toccare il codice)
+
+Dalla pagina organizzatori (link `?a=…`, ruolo `admin`) → **⚙️ Impostazioni festa**: modifica tutti
+i valori del foglio `Config` con anteprima di ciò che vede l'invitato. In alternativa, direttamente nel foglio `Config`:
 
 `scadenza`, `max_persone`, `indirizzo`, `info` (note logistiche), `messaggio` (testo WhatsApp:
 `{nome}` e `{link}` vengono sostituiti), `telegram` (`si`/`no`).
+
+`info` (come `indirizzo`) arriva solo a chi ha risposto Sì o Forse e compare nella scheda di conferma:
+una voce per riga, nel formato `Titolo: testo` (a capo dentro la cella: Ctrl+Invio). Le voci
+con titolo tipo *Dress code*, *Parcheggi*, *Regali*, *Taxi*, *Contatti* ricevono un'icona.
+`data` deve essere in formato ISO (es. `2026-10-30T18:00:00+01:00`) per il pulsante calendario.
 
 ## Organizzatori
 
