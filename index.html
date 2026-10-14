@@ -109,6 +109,15 @@ textarea:focus,input:focus,select:focus,button:focus-visible{outline:3px solid r
 .pill{font-size:13px;font-weight:700;border-radius:999px;padding:2px 10px;border:1px solid currentColor}
 .pill.yes{color:var(--yes)}.pill.maybe{color:var(--maybe)}.pill.no{color:var(--no)}.pill.unanswered{color:var(--muted);border-style:dashed}
 .sent{font-size:13px;color:var(--muted)}
+button.pill{appearance:none;background:none;font-family:inherit;cursor:pointer;line-height:1.5}
+button.pill::after{content:' ✎';font-weight:400;opacity:.7}
+button.pill:hover,button.pill:focus-visible{background:var(--card2)}
+.grp{margin:22px 0 0;display:flex;align-items:baseline;gap:10px;font-size:18px}
+.grp .n{font-size:14px;color:var(--muted);font-weight:400}
+.grp.yes{color:var(--yes)}.grp.no{color:var(--no)}.grp.wait{color:var(--gold)}.grp.off{color:var(--muted)}
+.quick{display:flex;flex-wrap:wrap;gap:6px}
+.quick .chip[aria-pressed="true"]{font-weight:700;border-color:currentColor}
+.quick .chip.yes{color:var(--yes)}.quick .chip.maybe{color:var(--maybe)}.quick .chip.no{color:var(--no)}
 .g-meta{font-size:14px;color:var(--muted);margin-top:4px}
 .g-note{font-size:14px;margin-top:4px;font-style:italic}
 .g-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
@@ -228,7 +237,7 @@ textarea:focus,input:focus,select:focus,button:focus-visible{outline:3px solid r
       <button type="button" class="btn btn-ghost btn-sm" id="a-refresh">Aggiorna</button>
     </div>
 
-    <ul class="guests" id="a-list"></ul>
+    <div id="a-list"></div>
 
     <div class="card" id="a-addbox">
       <h3>Aggiungi invitato</h3>
@@ -303,11 +312,11 @@ const MOCK = (() => {
         'Regali: non sprecare soldi in regali! Piuttosto investili in un taxi per l\'andata, ma soprattutto per il rientro 😉',
       deadline:'2026-10-28T23:59:00+01:00', maxParty:2,
       message:'Ciao {nome}! Venerdì 30 ottobre festeggio i miei 60 anni a casa, dalle 18.00. Mi farebbe tanto piacere averti con me 🎉\nConfermami qui, ci vuole un attimo:\n{link}' },
-    admins:{ 'demo-admin':{name:'Daniele', role:'admin'}, 'demo-viewer':{name:'Consultazione', role:'viewer'} },
+    admins:{ 'demo-admin':{name:'Daniele', role:'admin'}, 'demo-stefanie':{name:'Stefanie', role:'admin'}, 'demo-viewer':{name:'Consultazione', role:'viewer'} },
     guests:[
-      {id:'g1',token:'demo-anna',name:'Anna',phone:'',status:'yes',party:2,notes:'Arrivo verso le 19',sent:true,updatedAt:now,updatedBy:'invitato',active:true},
-      {id:'g2',token:'demo-marco',name:'Marco',phone:'+41790000000',status:'maybe',party:1,notes:'',sent:true,updatedAt:now,updatedBy:'invitato',active:true},
-      {id:'g3',token:'demo-lucia',name:'Lucia e Paolo',phone:'',status:'unanswered',party:1,notes:'',sent:true,updatedAt:'',updatedBy:'',active:true},
+      {id:'g1',token:'demo-anna',name:'Anna',phone:'',status:'yes',party:2,notes:'Arrivo verso le 19',sent:true,invitedBy:'Daniele',updatedAt:now,updatedBy:'invitato',active:true},
+      {id:'g2',token:'demo-marco',name:'Marco',phone:'+41790000000',status:'maybe',party:1,notes:'',sent:true,invitedBy:'Stefanie',updatedAt:now,updatedBy:'invitato',active:true},
+      {id:'g3',token:'demo-lucia',name:'Lucia e Paolo',phone:'',status:'unanswered',party:1,notes:'',sent:true,invitedBy:'Stefanie',updatedAt:'',updatedBy:'',active:true},
       {id:'g4',token:'demo-sara',name:'Sara',phone:'',status:'no',party:1,notes:'Sono via, un abbraccio!',sent:true,updatedAt:now,updatedBy:'invitato',active:true},
       {id:'g5',token:'demo-gigi',name:'Gigi',phone:'',status:'unanswered',party:1,notes:'',sent:false,updatedAt:'',updatedBy:'',active:true},
     ]
@@ -325,13 +334,15 @@ async function mockApi(action, d){
     g.status=d.status; g.party=d.status==='yes'?Math.min(Math.max(+d.party||1,1),g.maxParty||MOCK.event.maxParty):0; g.notes=(d.notes||'').slice(0,300);
     g.updatedAt=new Date().toISOString(); g.updatedBy='invitato'; return {ok:true,guest:pub(g),event:evFor(g)}; }
   if (action==='adminDashboard'){ const a=adm(), e=MOCK.event;
-    return {ok:true,me:a,event:e,guests:MOCK.guests.map(({token,...g})=>({...g,hasLink:!!token})),
+    return {ok:true,me:a,event:e,organizers:['Daniele','Stefanie'],guests:MOCK.guests.map(({token,...g})=>({...g,hasLink:!!token})),
       config:{titolo:e.title,data:e.date,orario:e.time,indirizzo:e.address,info:e.info,scadenza:e.deadline,max_persone:String(e.maxParty),messaggio:e.message,telegram:'si'}}; }
   const a = adm(); if (a.role!=='admin') err('forbidden');
   if (action==='adminUpsertGuest'){ let g=MOCK.guests.find(x=>x.id===d.guestId);
     if(!g){ g={id:'g'+Date.now(),token:'',name:'',phone:'',status:'unanswered',party:1,notes:'',sent:false,updatedAt:'',updatedBy:'',active:true}; MOCK.guests.push(g); }
     for (const k of ['name','phone','status','notes']) if (d[k]!==undefined) g[k]=String(d[k]).slice(0,k==='notes'?300:60);
-    if (d.party!==undefined) g.party=+d.party; if (d.maxParty!==undefined) g.maxParty=Math.min(Math.max(+d.maxParty||1,1),10); if (d.active!==undefined) g.active=d.active==='true'; if (d.sent!==undefined) g.sent=d.sent==='true';
+    if (d.party!==undefined) g.party=+d.party; if (d.maxParty!==undefined) g.maxParty=Math.min(Math.max(+d.maxParty||1,1),10); if (d.active!==undefined) g.active=d.active==='true'; if (d.sent!==undefined){ if (d.sent==='true'&&(!g.sent||!g.invitedBy)) g.invitedBy=a.name; if (d.sent!=='true') g.invitedBy=''; g.sent=d.sent==='true'; }
+    if (d.invitedBy!==undefined) g.invitedBy=d.invitedBy;
+    if (d.status!==undefined) g.party=d.status==='yes'?Math.min(Math.max(+d.party||1,1),g.maxParty||MOCK.event.maxParty):0;
     if (d.status!==undefined){ g.updatedAt=new Date().toISOString(); g.updatedBy=a.name; } return {ok:true,guestId:g.id}; }
   if (action==='adminSaveConfig'){ const c=d.config, e=MOCK.event;
     Object.assign(e,{title:c.titolo,date:c.data,time:c.orario,address:c.indirizzo,info:c.info,deadline:c.scadenza,maxParty:+c.max_persone||2,message:c.messaggio}); return {ok:true}; }
@@ -470,7 +481,7 @@ $('g-save').onclick = async ()=>{
 /* =========================================================
    VISTA ORGANIZZATORI
    ========================================================= */
-let A = {token:null, me:null, event:null, guests:[], filter:'all', q:'', open:null, ask:null, links:{}};
+let A = {token:null, me:null, event:null, guests:[], organizers:[], filter:'all', q:'', open:null, ask:null, links:{}};
 
 async function initAdmin(token){
   A.token=token;
@@ -479,7 +490,7 @@ async function initAdmin(token){
 }
 async function loadAdmin(){
   const r = await api('adminDashboard',{adminToken:A.token});
-  A.me=r.me; A.event=r.event; A.guests=r.guests;
+  A.me=r.me; A.event=r.event; A.guests=r.guests; A.organizers=r.organizers||[];
   $('a-who').textContent = `${r.me.name} · ${r.me.role==='admin'?'amministratore':'sola lettura'}`;
   $('a-addbox').hidden = r.me.role!=='admin';
   if (!A.cfgDirty) fillSettings(r.config||{});
@@ -541,23 +552,43 @@ function renderAdmin(){
     ['Mancanti',c('unanswered')],['Inviti inviati',`${act.filter(g=>g.sent).length}/${act.length}`]];
   $('a-tiles').innerHTML = tiles.map(([t,n,hl])=>`<div class="tile${hl?' hl':''}"><div class="n">${n}</div><div class="t">${t}</div></div>`).join('');
 
-  const F = [['all','Tutti'],['yes','Sì'],['maybe','Forse'],['no','No'],['unanswered','Mancanti'],['unsent','Da inviare']];
-  $('a-filters').innerHTML = F.map(([k,l])=>`<button type="button" class="chip" data-f="${k}" aria-pressed="${A.filter===k}">${l}</button>`).join('');
+  const F = [['all','Tutti'],['yes','Sì'],['maybe','Forse'],['no','No'],['unanswered','Mancanti'],['unsent','Da inviare'],
+    ...A.organizers.map(n=>['by:'+n,`Invitati da ${n}`])];
+  $('a-filters').innerHTML = F.map(([k,l])=>`<button type="button" class="chip" data-f="${esc(k)}" aria-pressed="${A.filter===k}">${esc(l)}</button>`).join('');
 
   const q=A.q.toLowerCase();
   const list = A.guests.filter(g=>{
     if (A.filter==='unsent') return g.active && !g.sent;
+    if (A.filter.startsWith('by:')) return g.sent && g.invitedBy===A.filter.slice(3) && (!q || g.name.toLowerCase().includes(q));
     if (A.filter!=='all' && (g.status!==A.filter || !g.active)) return false;
     return !q || g.name.toLowerCase().includes(q);
   }).sort((a,b)=>(b.active-a.active)||a.name.localeCompare(b.name,'it'));
 
+  /* tre gruppi: chi non ha ancora risposto (Forse compresi), chi non viene, i confermati; i disattivati in fondo */
+  const GROUPS = [
+    ['wait','Non hanno ancora risposto', g=>g.active&&(g.status==='unanswered'||g.status==='maybe')],
+    ['no','Non vengono', g=>g.active&&g.status==='no'],
+    ['yes','Confermati', g=>g.active&&g.status==='yes'],
+    ['off','Disattivati', g=>!g.active]];
+  const order = {unanswered:0, maybe:1};
+  const html = GROUPS.map(([k,title,fn])=>{
+    const gs = list.filter(fn).sort((a,b)=>(order[a.status]??0)-(order[b.status]??0)||a.name.localeCompare(b.name,'it'));
+    if (!gs.length) return '';
+    const n = k==='yes' ? `${gs.length} ${gs.length===1?'invito':'inviti'} · ${gs.reduce((s,g)=>s+(g.party||1),0)} persone` : `${gs.length}`;
+    return `<h3 class="grp ${k}">${title} <span class="n">${n}</span></h3><ul class="guests">${gs.map(guestHtml).join('')}</ul>`;
+  }).join('');
+  $('a-list').innerHTML = html || '<ul class="guests"><li class="g"><span class="hint">Nessuno in questo elenco.</span></li></ul>';
+}
+function guestHtml(g){
   const isAdmin = A.me.role==='admin';
-  $('a-list').innerHTML = list.length ? list.map(g=>`
+  const pill = `${STATUS_LABEL[g.status]}${g.status==='yes'?` · ${g.party}`:''}`;
+  return `
     <li class="g${g.active?'':' off'}" data-id="${esc(g.id)}">
       <div class="g-head">
         <span class="g-name">${esc(g.name)}</span>
-        <span class="pill ${g.status}">${STATUS_LABEL[g.status]}${g.status==='yes'?` · ${g.party}`:''}</span>
-        <span class="sent">${g.sent?'✓ invitato':'○ da invitare'}</span>
+        ${isAdmin ? `<button type="button" class="pill ${g.status}" data-act="quick" aria-expanded="${!!(A.open&&A.open.id===g.id&&A.open.kind==='quick')}" title="Cambia la risposta a mano">${pill}</button>`
+                  : `<span class="pill ${g.status}">${pill}</span>`}
+        <span class="sent">${g.sent?`✓ invitato${g.invitedBy?` da <b>${esc(g.invitedBy)}</b>`:''}`:'○ da invitare'}</span>
       </div>
       ${g.updatedAt?`<div class="g-meta">Aggiornato ${esc(fmtStamp(g.updatedAt))}${g.updatedBy?` da ${esc(g.updatedBy)}`:''}</div>`:''}
       ${g.notes?`<div class="g-note">“${esc(g.notes)}”</div>`:''}
@@ -572,7 +603,7 @@ function renderAdmin(){
         <div class="g-actions"><button type="button" class="btn btn-sm btn-wa" data-act="askyes">Sì, inviato</button><button type="button" class="btn btn-ghost btn-sm" data-act="askno">Non ancora</button></div>
       </div>` : ''}
       ${A.open && A.open.id===g.id ? panelHtml(g) : ''}
-    </li>`).join('') : '<li class="g"><span class="hint">Nessuno in questo elenco.</span></li>';
+    </li>`;
 }
 /* numero per wa.me: solo cifre con prefisso internazionale (079… → 4179…) */
 function waNumber(p){
@@ -582,6 +613,15 @@ function waNumber(p){
 function waUrl(g, text){ return `https://wa.me/${waNumber(g.phone)}?text=${encodeURIComponent(text)}`; }
 function inviteText(g, link){ return A.event.message.replace('{nome}', g.name.split(' ')[0]).replace('{link}', link); }
 function panelHtml(g){
+  if (A.open.kind==='quick'){
+    const max = g.maxParty||A.event.maxParty||2;
+    const opts = [...Array.from({length:max},(_,i)=>['yes',i+1,`Sì · ${i+1}`]), ['maybe',0,'Forse'], ['no',0,'No'], ['unanswered',0,'Mancante']];
+    return `<div class="panel">
+      <p class="hint" style="margin:0 0 8px">Risposta di <b>${esc(g.name)}</b>: scegli e si salva subito.</p>
+      <div class="quick">${opts.map(([s,n,l])=>`<button type="button" class="chip ${s}" data-act="setst" data-s="${s}" data-n="${n}"
+        aria-pressed="${g.status===s&&(s!=='yes'||g.party===n)}">${l}</button>`).join('')}
+        <button type="button" class="chip" data-act="close">Chiudi</button></div></div>`;
+  }
   if (A.open.kind==='invite'){
     const link = A.links[g.id];
     if (!link) return `<div class="panel">
@@ -608,6 +648,10 @@ function panelHtml(g){
       <label class="hint" for="e-max" style="align-self:center">Massimo persone per questo invito</label>
       <input id="e-max" type="number" min="1" max="10" value="${g.maxParty||A.event.maxParty}">
     </div>
+    <div class="row">
+      <label class="hint" for="e-by" style="align-self:center">Invitato da</label>
+      <select id="e-by"><option value="">—</option>${[...new Set([...A.organizers, g.invitedBy].filter(Boolean))].map(n=>`<option${g.invitedBy===n?' selected':''}>${esc(n)}</option>`).join('')}</select>
+    </div>
     <div class="row"><input id="e-name" maxlength="60" value="${esc(g.name)}" aria-label="Nome"><input id="e-phone" maxlength="20" value="${esc(g.phone)}" placeholder="Telefono" aria-label="Telefono"></div>
     <textarea id="e-notes" maxlength="300" style="margin-top:8px" placeholder="Note">${esc(g.notes)}</textarea>
     <div class="g-actions"><button type="button" class="btn btn-ghost btn-sm" data-act="save">Salva</button><button type="button" class="btn btn-ghost btn-sm" data-act="close">Chiudi</button></div>
@@ -621,8 +665,14 @@ $('a-list').addEventListener('click', async e=>{
   const b=e.target.closest('[data-act]'); if(!b) return;
   const li=b.closest('[data-id]'); const g=A.guests.find(x=>x.id===li.dataset.id); const act=b.dataset.act;
   try{
-    if (act==='invite'||act==='edit'){ A.open = (A.open&&A.open.id===g.id&&A.open.kind===act)?null:{id:g.id,kind:act}; }
+    if (act==='invite'||act==='edit'||act==='quick'){ A.open = (A.open&&A.open.id===g.id&&A.open.kind===act)?null:{id:g.id,kind:act}; }
     else if (act==='close'){ A.open=null; }
+    else if (act==='setst'){
+      if (b.getAttribute('aria-pressed')==='true'){ A.open=null; renderAdmin(); return; }
+      b.closest('.quick').querySelectorAll('button').forEach(x=>x.disabled=true); b.textContent='Salvo…';
+      await api('adminUpsertGuest',{adminToken:A.token,guestId:g.id,status:b.dataset.s,party:b.dataset.n});
+      A.open=null; await loadAdmin(); return;
+    }
     else if (act==='wa'){
       let link = A.links[g.id];
       if (!link && g.hasLink && !confirm(`${g.name} ha già un link: ne creo uno nuovo e il precedente smetterà di funzionare. Continuare?`)) return;
@@ -654,7 +704,7 @@ $('a-list').addEventListener('click', async e=>{
     }
     else if (act==='save'){
       await api('adminUpsertGuest',{adminToken:A.token,guestId:g.id,status:$('e-status').value,party:$('e-party').value,maxParty:$('e-max').value,
-        name:$('e-name').value.trim(),phone:$('e-phone').value.trim(),notes:$('e-notes').value.trim()});
+        name:$('e-name').value.trim(),phone:$('e-phone').value.trim(),notes:$('e-notes').value.trim(),invitedBy:$('e-by').value});
       A.open=null; await loadAdmin(); return;
     }
     renderAdmin();
@@ -671,8 +721,8 @@ $('add-btn').onclick = async ()=>{
 };
 $('a-csv').onclick = ()=>{
   const cell = v => { let s=String(v??''); if(/^[=+\-@]/.test(s)) s="'"+s; return `"${s.replace(/"/g,'""')}"`; };
-  const rows=[['Nome','Risposta','Persone','Note','Invitato','Aggiornato','Da','Attivo'],
-    ...A.guests.map(g=>[g.name,STATUS_LABEL[g.status],g.status==='yes'?g.party:0,g.notes,g.sent?'sì':'no',fmtStamp(g.updatedAt),g.updatedBy,g.active?'sì':'no'])];
+  const rows=[['Nome','Risposta','Persone','Note','Invitato','Invitato da','Aggiornato','Da','Attivo'],
+    ...A.guests.map(g=>[g.name,STATUS_LABEL[g.status],g.status==='yes'?g.party:0,g.notes,g.sent?'sì':'no',g.invitedBy||'',fmtStamp(g.updatedAt),g.updatedBy,g.active?'sì':'no'])];
   const blob=new Blob(['﻿'+rows.map(r=>r.map(cell).join(';')).join('\r\n')],{type:'text/csv'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='daniele60-rsvp.csv'; a.click();
 };

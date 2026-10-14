@@ -41,6 +41,11 @@ con titolo tipo *Dress code*, *Parcheggi*, *Regali*, *Taxi*, *Contatti* ricevono
 
 ## Organizzatori
 
+Nella pagina `?a=…` gli invitati sono in tre gruppi: chi non ha ancora risposto (Forse compresi),
+chi non viene, i confermati. Cliccando sulla risposta (es. *Mancante*, *Sì · 2*) un `admin` la cambia a mano.
+La colonna `invitato_da` (N) del foglio `Invitati` registra chi ha segnato l'invito come inviato;
+si può correggere da **Modifica → Invitato da**.
+
 Foglio `Organizzatori`: `ruolo` = `admin` o `viewer`, `attivo` = `si`/`no` per revocare.
 Per aggiungerne uno serve un nuovo token: chiedere a Claude/Codex di generarlo.
 

@@ -1,6 +1,6 @@
 // Daniele 60 — logica del backend (modulo Code dello scenario Make).
 // Input:  input.p      = JSON inviato dalla pagina ({action, ...dati})
-//         input.ranges = valueRanges di Sheets: [Invitati!A2:M, Organizzatori!A2:E, Config!A2:B]
+//         input.ranges = valueRanges di Sheets: [Invitati!A2:N, Organizzatori!A2:E, Config!A2:B]
 // Output: {resp, write, body, notify, text}
 //   resp   = JSON da restituire al browser
 //   write  = true se va scritto il foglio; body = corpo per values:batchUpdate
@@ -31,7 +31,7 @@ const cfg = {};
 rowsC.forEach(r => { if (r[0]) cfg[r[0]] = r[1] ?? ''; });
 const maxDef = int(cfg.max_persone, 2);
 const COLS = ['id', 'nome', 'telefono', 'token_hash', 'stato', 'persone', 'max_persone', 'note',
-  'invitato', 'inviato_il', 'aggiornato_il', 'aggiornato_da', 'attivo'];
+  'invitato', 'inviato_il', 'aggiornato_il', 'aggiornato_da', 'attivo', 'invitato_da'];
 const guests = rowsG.map((r, i) => { const g = { _row: i + 2 }; COLS.forEach((c, j) => g[c] = r[j] ?? ''); return g; });
 const orgs = rowsO.map(r => ({ id: r[0], name: r[1], hash: r[2], role: r[3], active: r[4] }));
 
@@ -41,7 +41,7 @@ const fail = c => reply({ ok: false, error: c });
 const writes = [];
 const flush = () => { out.write = true; out.body = JSON.stringify({ valueInputOption: 'RAW', data: writes }); };
 const write = g => {
-  writes.push({ range: `Invitati!A${g._row}:M${g._row}`, values: [COLS.map(c => String(g[c] ?? ''))] });
+  writes.push({ range: `Invitati!A${g._row}:N${g._row}`, values: [COLS.map(c => String(g[c] ?? ''))] });
   flush();
 };
 // chiavi del foglio Config modificabili dalla pagina organizzatori
@@ -87,11 +87,12 @@ if (!me) return fail('unauthorized');
 
 if (A === 'adminDashboard') {
   return reply({ ok: true, me: { name: me.name, role: me.role },
+    organizers: orgs.filter(o => o.role === 'admin' && o.active === 'si').map(o => o.name),
     event: { ...evFor({ stato: 'yes' }), maxParty: maxDef, message: cfg.messaggio },
     config: Object.fromEntries(CFG_KEYS.map(k => [k, cfg[k] ?? ''])),
     guests: guests.filter(g => g.id).map(g => ({
       id: g.id, name: g.nome, phone: g.telefono, status: g.stato || 'unanswered', party: int(g.persone, 0),
-      maxParty: int(g.max_persone, 0), notes: g.note, sent: g.invitato === 'si', sentAt: g.inviato_il,
+      maxParty: int(g.max_persone, 0), notes: g.note, sent: g.invitato === 'si', sentAt: g.inviato_il, invitedBy: g.invitato_da,
       hasLink: !!g.token_hash, updatedAt: g.aggiornato_il, updatedBy: g.aggiornato_da, active: g.attivo === 'si' })) });
 }
 if (me.role !== 'admin') return fail('forbidden');
@@ -113,7 +114,15 @@ if (A === 'adminUpsertGuest') {
   if (P.maxParty !== undefined) g.max_persone = String(Math.min(Math.max(int(P.maxParty, maxDef), 1), 10));
   if (P.notes !== undefined) g.note = clean(P.notes, 300);
   if (P.active !== undefined) g.attivo = bool(P.active) ? 'si' : 'no';
-  if (P.sent !== undefined) { g.invitato = bool(P.sent) ? 'si' : 'no'; g.inviato_il = bool(P.sent) ? now : ''; }
+  if (P.sent !== undefined) {
+    if (!bool(P.sent)) { g.invitato = 'no'; g.inviato_il = ''; g.invitato_da = ''; }
+    else { if (g.invitato !== 'si' || !g.invitato_da) g.invitato_da = me.name; g.invitato = 'si'; g.inviato_il = now; }
+  }
+  if (P.invitedBy !== undefined) {
+    const by = clean(P.invitedBy, 60);
+    if (by && !orgs.some(o => o.name === by)) return fail('bad_input');
+    g.invitato_da = by;
+  }
   if (P.status !== undefined) {
     if (![...STATUS, 'unanswered'].includes(P.status)) return fail('bad_input');
     g.stato = P.status;
