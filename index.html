@@ -107,17 +107,21 @@ textarea:focus,input:focus,select:focus,button:focus-visible{outline:3px solid r
 .g-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .g-name{font-weight:700;flex:1 1 auto}
 .pill{font-size:13px;font-weight:700;border-radius:999px;padding:2px 10px;border:1px solid currentColor}
-.pill.yes{color:var(--yes)}.pill.maybe{color:var(--maybe)}.pill.no{color:var(--no)}.pill.unanswered{color:var(--muted);border-style:dashed}
+/* risposte nella pagina organizzatori: verde viene, blu non sa / non ha risposto, rosso non viene */
+:root{--a-yes:#3fb950;--a-wait:#4f8cff;--a-no:#e5484d;--a-pink:#ff6fae}
+.pill.yes{color:#fff;background:var(--a-yes);border-color:var(--a-yes)}
+.pill.maybe,.pill.unanswered{color:#fff;background:var(--a-wait);border-color:var(--a-wait)}.pill.unanswered{border-style:dashed;border-color:#fff8}
+.pill.no{color:#fff;background:var(--a-no);border-color:var(--a-no)}
 .sent{font-size:13px;color:var(--muted)}
 button.pill{appearance:none;background:none;font-family:inherit;cursor:pointer;line-height:1.5}
 button.pill::after{content:' ✎';font-weight:400;opacity:.7}
-button.pill:hover,button.pill:focus-visible{background:var(--card2)}
+button.pill:hover,button.pill:focus-visible{filter:brightness(1.15)}
 .grp{margin:22px 0 0;display:flex;align-items:baseline;gap:10px;font-size:18px}
 .grp .n{font-size:14px;color:var(--muted);font-weight:400}
-.grp.yes{color:var(--yes)}.grp.no{color:var(--no)}.grp.wait{color:var(--gold)}.grp.off{color:var(--muted)}
+.grp.yes{color:var(--a-yes)}.grp.no{color:var(--a-no)}.grp.wait{color:var(--a-wait)}.grp.off{color:var(--muted)}
 .quick{display:flex;flex-wrap:wrap;gap:6px}
 .quick .chip[aria-pressed="true"]{font-weight:700;border-color:currentColor}
-.quick .chip.yes{color:var(--yes)}.quick .chip.maybe{color:var(--maybe)}.quick .chip.no{color:var(--no)}
+.quick .chip.yes{color:var(--a-yes)}.quick .chip.maybe,.quick .chip.unanswered{color:var(--a-wait)}.quick .chip.no{color:var(--a-no)}
 .g-meta{font-size:14px;color:var(--muted);margin-top:4px}
 .g-note{font-size:14px;margin-top:4px;font-style:italic}
 .g-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
@@ -125,6 +129,7 @@ button.pill:hover,button.pill:focus-visible{background:var(--card2)}
 .panel .row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .preview{white-space:pre-wrap;background:#1f1913;border-radius:10px;padding:10px;font-size:14px;margin:8px 0;word-break:break-word}
 .btn-wa{background:#25d366;color:#0b2416}
+.btn-wa.again{background:var(--a-pink);color:#3a0a20}
 .panel.ask{border-color:#25d366}
 .settings summary{cursor:pointer;list-style:none;font-size:17px}
 .settings summary::-webkit-details-marker{display:none}
@@ -593,7 +598,7 @@ function guestHtml(g){
       ${g.updatedAt?`<div class="g-meta">Aggiornato ${esc(fmtStamp(g.updatedAt))}${g.updatedBy?` da ${esc(g.updatedBy)}`:''}</div>`:''}
       ${g.notes?`<div class="g-note">“${esc(g.notes)}”</div>`:''}
       ${isAdmin?`<div class="g-actions">
-        ${g.active?`<button type="button" class="btn btn-sm btn-wa" data-act="wa">${g.sent?'Invita di nuovo':'Invita su WhatsApp'}</button>`:''}
+        ${g.active?`<button type="button" class="btn btn-sm btn-wa${g.sent?' again':''}" data-act="wa">${g.sent?'Invita di nuovo':'Invita su WhatsApp'}</button>`:''}
         <button type="button" class="btn btn-ghost btn-sm" data-act="invite">Copia link…</button>
         <button type="button" class="btn btn-ghost btn-sm" data-act="edit">Modifica</button>
         <button type="button" class="btn btn-ghost btn-sm" data-act="toggle">${g.active?'Disattiva':'Riattiva'}</button>
